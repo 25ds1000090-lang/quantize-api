@@ -264,6 +264,7 @@ def make_select(data: dict[str, Any], recorded: dict[str, Any]) -> dict[str, Any
 
 
 @app.post("/quantize")
+@app.post("/api/index")
 async def quantize(request: Request):
     try:
         data = await request.json()
