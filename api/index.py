@@ -65,10 +65,6 @@ def freeze_top_valid(data: Any) -> bool:
         return False
     if not nonempty_string(data.get("freezeId"), 128):
         return False
-    if not nonempty_string(data.get("calibrationDigest")) or not nonempty_string(data.get("tokenizerDigest")):
-        return False
-    if not unique_nonempty_strings(data.get("allowedUnsupportedReasons")):
-        return False
     candidates = data.get("candidates")
     if not isinstance(candidates, list) or not candidates:
         return False
@@ -77,10 +73,16 @@ def freeze_top_valid(data: Any) -> bool:
 
 
 def make_freeze(data: dict[str, Any]) -> dict[str, Any]:
-    allowed = set(data["allowedUnsupportedReasons"])
+    allowed_value = data.get("allowedUnsupportedReasons")
+    globals_valid = (nonempty_string(data.get("calibrationDigest"))
+                     and nonempty_string(data.get("tokenizerDigest"))
+                     and unique_nonempty_strings(allowed_value))
+    allowed = set(allowed_value) if unique_nonempty_strings(allowed_value) else set()
     out = []
     for candidate in data["candidates"]:
         reasons: list[str] = []
+        if not globals_valid:
+            reasons.append("INVALID_INPUT")
         files = candidate.get("files")
         if files_valid(files):
             inventory, total, package_digest = inventory_for(files)
@@ -101,9 +103,9 @@ def make_freeze(data: dict[str, Any]) -> dict[str, Any]:
         else:
             if candidate.get("loadable") is not True:
                 reasons.append("NOT_LOADABLE")
-            if candidate.get("calibrationDigest") != data["calibrationDigest"]:
+            if candidate.get("calibrationDigest") != data.get("calibrationDigest"):
                 reasons.append("CALIBRATION_MISMATCH")
-            if candidate.get("tokenizerDigest") != data["tokenizerDigest"]:
+            if candidate.get("tokenizerDigest") != data.get("tokenizerDigest"):
                 reasons.append("TOKENIZER_MISMATCH")
             status = "frozen" if not reasons else "invalid"
 
